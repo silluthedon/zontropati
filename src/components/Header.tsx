@@ -43,11 +43,11 @@ const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
               </button>
             ))}
             <button
-              onClick={() => handleNavClick('products')}
+              onClick={() => handleNavClick('order')} // 'products' থেকে 'order' এ পরিবর্তন করা হয়েছে
               className="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 transition-colors duration-200 font-medium flex items-center gap-2"
             >
               <ShoppingCart size={18} />
-              Shop Now
+              View Cart {/* "Shop Now" থেকে "View Cart" এ পরিবর্তন করা হয়েছে */}
             </button>
           </nav>
 
@@ -73,11 +73,11 @@ const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
               </button>
             ))}
             <button
-              onClick={() => handleNavClick('products')}
+              onClick={() => handleNavClick('order')} // 'products' থেকে 'order' এ পরিবর্তন করা হয়েছে
               className="w-full mt-4 bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 transition-colors duration-200 font-medium flex items-center justify-center gap-2"
             >
               <ShoppingCart size={18} />
-              Shop Now
+              View Cart
             </button>
           </nav>
         )}
