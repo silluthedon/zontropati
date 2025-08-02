@@ -26,7 +26,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           {/* Logo and Description */}
           <div className="md:col-span-2">
             <h3 className="text-2xl font-bold mb-4">
-              ZontropaTi <span className="text-primary-400">powered by Zantrik</span> {/* এখানে blue-400 পরিবর্তন করা হয়েছে */}
+              যন্ত্রপাতি <span className="text-primary-400">powered by Zantrik</span> {/* এখানে blue-400 পরিবর্তন করা হয়েছে */}
             </h3>
             <p className="text-gray-300 mb-4 leading-relaxed">
               Your trusted source for high-quality car tools in Bangladesh. 
@@ -72,7 +72,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
 
         <div className="border-t border-gray-800 mt-8 pt-8 text-center">
           <p className="text-gray-400">
-            © 2025 ZontropaTi. All rights reserved.
+            © 2025 যন্ত্রপাতি. All rights reserved.
           </p>
           <p className="text-gray-500 text-sm mt-2 flex items-center justify-center gap-1"> {/* flex, items-center, justify-center, gap-1 যোগ করা হয়েছে */}
             <Crown size={16} className="text-primary-400" /> {/* মুকুট আইকন যোগ করা হয়েছে */}
