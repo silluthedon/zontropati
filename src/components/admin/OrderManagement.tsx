@@ -1,7 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, ChevronLeft, ChevronRight } from 'lucide-react';
-import { supabase, Order } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
+
+// Assuming these interfaces are defined in '../../lib/supabase' or elsewhere
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+}
+
+interface Order {
+  id: string;
+  customer_name: string;
+  email: string;
+  phone: string;
+  address: string;
+  quantity: number;
+  status: string;
+  order_date: string;
+  product: Product;
+  product_id: string;
+  user_id: string; // Add the user_id field
+}
 
 interface OrderManagementProps {
   onStatsUpdate: () => void;
@@ -9,17 +30,49 @@ interface OrderManagementProps {
 
 const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [searchTerm, setSearchTerm] = useState(''); // নতুন স্টেট: সার্চ টার্ম সংরক্ষণের জন্য
-  const [currentPage, setCurrentPage] = useState(1); // নতুন স্টেট: বর্তমান পৃষ্ঠার জন্য
-  const [totalPages, setTotalPages] = useState(1); // নতুন স্টেট: মোট পৃষ্ঠার জন্য
-  const itemsPerPage = 10; // প্রতি পৃষ্ঠায় কতগুলো অর্ডার থাকবে
+  const [searchTerm, setSearchTerm] = useState('');
+  const [productFilter, setProductFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const itemsPerPage = 10;
 
+  // Listen for auth state changes to get the current user
   useEffect(() => {
-    fetchOrders();
-  }, [currentPage, searchTerm]); // currentPage এবং searchTerm পরিবর্তন হলে fetchOrders আবার কল হবে
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  // Fetch orders and products when user, currentPage, searchTerm, or productFilter changes
+  useEffect(() => {
+    if (user) {
+      fetchOrders();
+      fetchProducts();
+    } else {
+      setOrders([]); // Clear orders if user logs out
+      setLoading(false);
+    }
+  }, [user, currentPage, searchTerm, productFilter]);
+
+  const fetchProducts = async () => {
+    try {
+      const { data, error } = await supabase.from('products').select('id, name, price');
+      if (error) throw error;
+      setProducts(data as Product[]);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      toast.error('Failed to load product list');
+    }
+  };
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -37,20 +90,28 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
           quantity,
           status,
           order_date,
+          product_id,
           products (
             id,
             name,
             price
           )
-        `, { count: 'exact' }); // মোট সংখ্যা জানার জন্য count ব্যবহার করা হয়েছে
+        `, { count: 'exact' })
+        .eq('user_id', user.id); // গুরুত্বপূর্ণ পরিবর্তন: শুধুমাত্র বর্তমান ব্যবহারকারীর অর্ডার ফিল্টার করা হচ্ছে
 
+      // Apply search filter if a search term is present
       if (searchTerm) {
-        query = query.or(`customer_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`); // সার্চ লজিক
+        query = query.or(`customer_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
+      }
+      
+      // Apply product filter if a product is selected
+      if (productFilter) {
+        query = query.eq('product_id', productFilter);
       }
 
       const { data, error, count } = await query
         .order('order_date', { ascending: false })
-        .range(offset, offset + itemsPerPage - 1); // পেজিনেশন লজিক
+        .range(offset, offset + itemsPerPage - 1);
 
       if (error) {
         console.error('Error fetching orders:', error);
@@ -73,6 +134,32 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
     }
   };
 
+  // একটি উদাহরণ ফাংশন যা দেখায় কীভাবে লগইন করার পরে অর্ডার দেওয়া যায়
+  const handlePlaceOrder = async (orderData: Omit<Order, 'id' | 'status' | 'order_date' | 'product' | 'user_id'>) => {
+    if (!user) {
+      toast.error('You must be logged in to place an order.');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.from('orders').insert([{
+        ...orderData,
+        user_id: user.id, // অর্ডার ডেটার সাথে user_id যুক্ত করা হচ্ছে
+      }]);
+
+      if (error) throw error;
+      
+      toast.success('Order placed successfully!');
+      fetchOrders(); // নতুন অর্ডার লোড করার জন্য তালিকা আপডেট করা
+    } catch (error) {
+      console.error('Error placing order:', error);
+      toast.error('Failed to place order');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
       const { error } = await supabase
@@ -82,7 +169,7 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
 
       if (error) throw error;
 
-      setOrders(orders.map(order => 
+      setOrders(orders.map(order =>
         order.id === orderId ? { ...order, status: newStatus } : order
       ));
       
@@ -105,7 +192,12 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    setCurrentPage(1); // নতুন সার্চ করলে প্রথম পাতায় চলে যাবে
+    setCurrentPage(1);
+  };
+
+  const handleProductFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setProductFilter(e.target.value);
+    setCurrentPage(1);
   };
 
   const handlePageChange = (newPage: number) => {
@@ -113,6 +205,14 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
       setCurrentPage(newPage);
     }
   };
+
+  if (!user) {
+    return (
+      <div className="flex justify-center items-center h-64 text-gray-600">
+        <p>Please log in to view your orders.</p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -125,14 +225,28 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
   return (
     <div>
       <div className="flex flex-col md:flex-row justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4 md:mb-0">Order Management</h2>
-        <input
-          type="text"
-          placeholder="Search by name or email..."
-          value={searchTerm}
-          onChange={handleSearch}
-          className="w-full md:w-64 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-        />
+        <h2 className="text-2xl font-bold text-gray-800 mb-4 md:mb-0">My Orders</h2>
+        <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 w-full md:w-auto">
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            value={searchTerm}
+            onChange={handleSearch}
+            className="w-full md:w-64 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+          />
+          <select
+            value={productFilter}
+            onChange={handleProductFilterChange}
+            className="w-full md:w-48 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
+            <option value="">All Products</option>
+            {products.map(product => (
+              <option key={product.id} value={product.id}>
+                {product.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -244,7 +358,7 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
         </div>
       )}
 
-      {/* Order Details Modal (unmodified) */}
+      {/* Order Details Modal */}
       {showModal && selectedOrder && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
@@ -270,7 +384,7 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
                   <strong>Quantity:</strong> {selectedOrder.quantity}
                 </div>
                 <div>
-                  <strong>Status:</strong> 
+                  <strong>Status:</strong>
                   <span className={`ml-2 px-2 py-1 rounded-full text-xs ${getStatusColor(selectedOrder.status)}`}>
                     {selectedOrder.status}
                   </span>

@@ -6,8 +6,8 @@
 
 /* Base colors - Zantrik's color palette */
 :root {
-  --primary-green: #2ecc71; /* Zantrik's main green color */
-  --dark-green: #27ae60;
+  --primary-green: #00c2a0; /* Zantrik's main green color */
+  --dark-green: #009d81;
   --text-color: #333333;
   --bg-light: #ffffff;
   --bg-dark: #f8f9fa;
@@ -81,7 +81,7 @@ textarea:focus,
 select:focus {
   outline: none;
   border-color: var(--primary-green);
-  box-shadow: 0 0 0 3px rgba(46, 204, 113, 0.2);
+  box-shadow: 0 0 0 3px rgba(0, 194, 160, 0.2);
 }
 
 /* Custom scrollbar */
@@ -128,7 +128,7 @@ select:focus {
 /* Hero section background overlay */
 .hero-overlay {
   /* Zantrik's green-themed overlay */
-  background: linear-gradient(135deg, rgba(46, 204, 113, 0.9) 0%, rgba(39, 174, 96, 0.8) 100%);
+  background: linear-gradient(135deg, rgba(0, 194, 160, 0.9) 0%, rgba(0, 157, 129, 0.8) 100%);
 }
 
 /* Card hover effects */
