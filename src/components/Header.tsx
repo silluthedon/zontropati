@@ -27,7 +27,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
           {/* Logo */}
           <div className="flex items-center">
             <h1 className="text-2xl font-bold text-primary-600">
-              ZontropaTi <span className="text-gray-600 text-sm">powered by Zantrik</span>
+              যন্ত্রপাতি <span className="text-gray-600 text-sm">powered by Zantrik</span>
             </h1>
           </div>
 

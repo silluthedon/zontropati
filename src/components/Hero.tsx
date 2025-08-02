@@ -18,7 +18,7 @@ const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
     >
       <div className="container mx-auto px-4 text-center relative z-10">
         <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
-          গাড়ির টুল এবং এক্সেসরিজ কিনুন, এক যায়গায় <span className="text-primary-300">যন্ত্রপাতি</span>
+          গাড়ির টুল এবং এক্সেসরিজ কিনুন, এক যায়গায় <span className="text-primary-300"></span>
         </h1>
         <p className="text-xl md:text-2xl mb-8 text-primary-100 max-w-2xl mx-auto">
           Powered by Zantrik – Your Automotive Solution

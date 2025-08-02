@@ -105,7 +105,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ cart, setCart }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Full Name *
+                    পুরো নাম *
                   </label>
                   <input
                     type="text"
@@ -123,7 +123,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ cart, setCart }) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email *
+                    ইমেইল *
                   </label>
                   <input
                     type="email"
@@ -142,7 +142,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ cart, setCart }) => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number *
+                  মোবাইল নাম্বার *
                 </label>
                 <input
                   type="tel"
@@ -160,7 +160,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ cart, setCart }) => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Delivery Address *
+                  ডেলিভারি ঠিকানা *
                 </label>
                 <textarea
                   {...register('address')}
@@ -178,9 +178,9 @@ const OrderForm: React.FC<OrderFormProps> = ({ cart, setCart }) => {
               </div>
 
               <div className="mt-8">
-                <h3 className="text-xl font-bold text-gray-800 mb-4">Your Cart ({cart.length})</h3>
+                <h3 className="text-xl font-bold text-gray-800 mb-4">আমার কার্ট ({cart.length})</h3>
                 {cart.length === 0 ? (
-                  <p className="text-gray-500 text-center">Your cart is empty.</p>
+                  <p className="text-gray-500 text-center">কার্টে কোন পণ্য নেই</p>
                 ) : (
                   <div className="space-y-4">
                     {cart.map(item => (
@@ -205,7 +205,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ cart, setCart }) => {
               </div>
 
               <div className="flex justify-between items-center text-2xl font-bold py-4 border-t border-gray-200">
-                <span>Total:</span>
+                <span>মোট:</span>
                 <span className="text-primary-600">৳{totalCartPrice.toLocaleString()}</span>
               </div>
 
