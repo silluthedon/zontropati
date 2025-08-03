@@ -6,16 +6,22 @@ import * as yup from 'yup';
 import { supabase, Product } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
+// ক্যাটাগরির তালিকা
+const categories = ['All', 'Tools', 'Accessories', 'Engine oil', 'Spare parts'];
+
+// Yup স্কিমা আপডেট করা হয়েছে category ফিল্ড যোগ করে
 const schema = yup.object().shape({
   name: yup.string().required('Product name is required'),
   description: yup.string().required('Description is required'),
   price: yup.number().positive('Price must be positive').required('Price is required'),
+  category: yup.string().oneOf(categories.slice(1), 'Invalid category').required('Category is required'),
 });
 
 interface ProductFormData {
   name: string;
   description: string;
   price: number;
+  category: string;
 }
 
 interface ProductManagementProps {
@@ -30,6 +36,7 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ onStatsUpdate }) 
   const [submitting, setSubmitting] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 6;
@@ -47,14 +54,13 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ onStatsUpdate }) 
 
   useEffect(() => {
     fetchProducts();
-  }, [currentPage]); 
+  }, [currentPage, selectedCategory]); 
 
   useEffect(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
     
-    // এখানে শর্ত যোগ করা হয়েছে: searchTerm-এর দৈর্ঘ্য ২ বা তার বেশি হলে debounce শুরু হবে
     if (searchTerm.length >= 2 || searchTerm.length === 0) {
       timeoutRef.current = setTimeout(() => {
         fetchProducts();
@@ -76,6 +82,11 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ onStatsUpdate }) 
       let query = supabase
         .from('products')
         .select('*', { count: 'exact' });
+
+      // নির্বাচিত ক্যাটাগরি অনুযায়ী ফিল্টার করা
+      if (selectedCategory !== 'All') {
+        query = query.eq('category', selectedCategory);
+      }
 
       if (searchTerm) {
         query = query.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
@@ -104,9 +115,13 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ onStatsUpdate }) 
       setValue('name', product.name);
       setValue('description', product.description);
       setValue('price', product.price);
+      // এডিটিং এর জন্য ক্যাটাগরি সেট করা
+      setValue('category', product.category);
     } else {
       setEditingProduct(null);
       reset();
+      // নতুন প্রোডাক্টের জন্য ডিফল্ট ক্যাটাগরি সেট করা
+      setValue('category', categories[1]);
     }
     setImageFile(null);
     setShowModal(true);
@@ -192,7 +207,8 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ onStatsUpdate }) 
   };
 
   const deleteProduct = async (productId: string) => {
-    if (!confirm('Are you sure you want to delete this product?')) return;
+    // এখানে confirm() এর পরিবর্তে একটি কাস্টম মডাল ব্যবহার করা উচিত
+    if (!window.confirm('Are you sure you want to delete this product?')) return;
   
     try {
       const productToDelete = products.find(p => p.id === productId);
@@ -227,6 +243,11 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ onStatsUpdate }) 
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
+    setCurrentPage(1);
+  };
+  
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
     setCurrentPage(1);
   };
 
@@ -266,6 +287,23 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ onStatsUpdate }) 
         </div>
       </div>
 
+      {/* ক্যাটাগরি ফিল্টার */}
+      <div className="flex flex-wrap justify-start gap-2 mb-8">
+        {categories.map((category) => (
+          <button
+            key={category}
+            onClick={() => handleCategoryChange(category)}
+            className={`py-2 px-6 rounded-full font-semibold transition-colors duration-200 ${
+              selectedCategory === category
+                ? 'bg-primary-600 text-white shadow-md'
+                : 'bg-white text-gray-700 hover:bg-gray-200 shadow'
+            }`}
+          >
+            {category}
+          </button>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {products.length > 0 ? (
           products.map((product) => (
@@ -276,7 +314,12 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ onStatsUpdate }) 
                 className="w-full h-48 object-cover"
               />
               <div className="p-4">
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">{product.name}</h3>
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-lg font-semibold text-gray-800">{product.name}</h3>
+                  <span className="text-xs font-medium text-primary-600 bg-primary-100 px-2 py-1 rounded-full">
+                    {product.category}
+                  </span>
+                </div>
                 <p className="text-gray-600 text-sm mb-3 line-clamp-2">{product.description}</p>
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-xl font-bold text-primary-600">৳{product.price.toLocaleString()}</span>
@@ -377,6 +420,25 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ onStatsUpdate }) 
                   />
                   {errors.price && (
                     <p className="text-red-500 text-sm mt-1">{errors.price.message}</p>
+                  )}
+                </div>
+
+                {/* ক্যাটাগরি ফিল্ড */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Category *
+                  </label>
+                  <select
+                    {...register('category')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="">Select a category</option>
+                    {categories.slice(1).map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                  {errors.category && (
+                    <p className="text-red-500 text-sm mt-1">{errors.category.message}</p>
                   )}
                 </div>
 

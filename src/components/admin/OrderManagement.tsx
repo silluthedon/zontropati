@@ -8,6 +8,7 @@ interface Product {
   id: string;
   name: string;
   price: number;
+  category: string; // Add the category field
 }
 
 interface Order {
@@ -21,12 +22,14 @@ interface Order {
   order_date: string;
   product: Product;
   product_id: string;
-  user_id: string; // Add the user_id field
+  user_id: string;
 }
 
 interface OrderManagementProps {
   onStatsUpdate: () => void;
 }
+
+const categories = ['All', 'Tools', 'Accessories', 'Engine oil', 'Spare parts'];
 
 const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -36,12 +39,12 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All'); // নতুন স্টেট
   const [productFilter, setProductFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 10;
 
-  // Listen for auth state changes to get the current user
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
@@ -52,20 +55,19 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
     };
   }, []);
 
-  // Fetch orders and products when user, currentPage, searchTerm, or productFilter changes
   useEffect(() => {
     if (user) {
       fetchOrders();
       fetchProducts();
     } else {
-      setOrders([]); // Clear orders if user logs out
+      setOrders([]);
       setLoading(false);
     }
-  }, [user, currentPage, searchTerm, productFilter]);
+  }, [user, currentPage, searchTerm, productFilter, selectedCategoryFilter]); // dependency array-তে নতুন স্টেট যুক্ত করা হয়েছে
 
   const fetchProducts = async () => {
     try {
-      const { data, error } = await supabase.from('products').select('id, name, price');
+      const { data, error } = await supabase.from('products').select('id, name, price, category');
       if (error) throw error;
       setProducts(data as Product[]);
     } catch (error) {
@@ -94,17 +96,22 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
           products (
             id,
             name,
-            price
+            price,
+            category
           )
         `, { count: 'exact' })
-        .eq('user_id', user.id); // গুরুত্বপূর্ণ পরিবর্তন: শুধুমাত্র বর্তমান ব্যবহারকারীর অর্ডার ফিল্টার করা হচ্ছে
+        .eq('user_id', user.id);
 
-      // Apply search filter if a search term is present
       if (searchTerm) {
         query = query.or(`customer_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
       }
       
-      // Apply product filter if a product is selected
+      // প্রোডাক্ট ক্যাটাগরি ফিল্টার করা
+      if (selectedCategoryFilter !== 'All') {
+        // 'products' রিলেশন ব্যবহার করে ফিল্টার করা
+        query = query.eq('products.category', selectedCategoryFilter);
+      }
+      
       if (productFilter) {
         query = query.eq('product_id', productFilter);
       }
@@ -134,7 +141,6 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
     }
   };
 
-  // একটি উদাহরণ ফাংশন যা দেখায় কীভাবে লগইন করার পরে অর্ডার দেওয়া যায়
   const handlePlaceOrder = async (orderData: Omit<Order, 'id' | 'status' | 'order_date' | 'product' | 'user_id'>) => {
     if (!user) {
       toast.error('You must be logged in to place an order.');
@@ -145,13 +151,13 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
     try {
       const { data, error } = await supabase.from('orders').insert([{
         ...orderData,
-        user_id: user.id, // অর্ডার ডেটার সাথে user_id যুক্ত করা হচ্ছে
+        user_id: user.id,
       }]);
 
       if (error) throw error;
       
       toast.success('Order placed successfully!');
-      fetchOrders(); // নতুন অর্ডার লোড করার জন্য তালিকা আপডেট করা
+      fetchOrders();
     } catch (error) {
       console.error('Error placing order:', error);
       toast.error('Failed to place order');
@@ -194,9 +200,18 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
     setSearchTerm(e.target.value);
     setCurrentPage(1);
   };
+  
+  const handleCategoryFilterChange = (category: string) => {
+    setSelectedCategoryFilter(category);
+    // যখন ক্যাটাগরি ফিল্টার পরিবর্তন করা হবে, তখন প্রোডাক্ট ফিল্টারটি রিসেট করা
+    setProductFilter(''); 
+    setCurrentPage(1);
+  };
 
   const handleProductFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setProductFilter(e.target.value);
+    // যখন প্রোডাক্ট ফিল্টার পরিবর্তন করা হবে, তখন ক্যাটাগরি ফিল্টারটি রিসেট করা
+    setSelectedCategoryFilter('All');
     setCurrentPage(1);
   };
 
@@ -246,6 +261,19 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
               </option>
             ))}
           </select>
+
+          {/* নতুন ক্যাটাগরি ফিল্টার */}
+          <select
+            value={selectedCategoryFilter}
+            onChange={(e) => handleCategoryFilterChange(e.target.value)}
+            className="w-full md:w-48 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
+            {categories.map(category => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -262,6 +290,9 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Product
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Category
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Quantity
@@ -292,6 +323,11 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {order.product?.name || 'Unknown Product'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                        {order.product?.category || 'N/A'}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {order.quantity}
@@ -325,7 +361,7 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
                     No orders found.
                   </td>
                 </tr>
@@ -335,7 +371,6 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
         </div>
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="mt-6 flex justify-center items-center space-x-2">
           <button
@@ -358,7 +393,6 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
         </div>
       )}
 
-      {/* Order Details Modal */}
       {showModal && selectedOrder && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
@@ -379,6 +413,9 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
                 </div>
                 <div>
                   <strong>Product:</strong> {selectedOrder.product?.name}
+                </div>
+                <div>
+                  <strong>Category:</strong> {selectedOrder.product?.category || 'N/A'}
                 </div>
                 <div>
                   <strong>Quantity:</strong> {selectedOrder.quantity}

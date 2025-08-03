@@ -7,20 +7,31 @@ interface ProductsProps {
   onAddToCart: (product: Product) => void;
 }
 
+const categories = ['All', 'Tools', 'Accessories', 'Engine oil', 'Spare parts'];
+
 const Products: React.FC<ProductsProps> = ({ onAddToCart }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [selectedCategory]); // selectedCategory পরিবর্তন হলে useEffect আবার চলবে
 
   const fetchProducts = async () => {
+    setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('products')
         .select('*')
         .order('created_at', { ascending: true });
+
+      // নির্বাচিত ক্যাটাগরি অনুযায়ী ফিল্টার করা
+      if (selectedCategory !== 'All') {
+        query = query.eq('category', selectedCategory);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setProducts(data || []);
@@ -42,7 +53,6 @@ const Products: React.FC<ProductsProps> = ({ onAddToCart }) => {
       <section id="products" className="py-16 bg-gray-50">
         <div className="container mx-auto px-4">
           <div className="flex justify-center items-center h-64">
-            {/* এখানে blue-600 পরিবর্তন করে primary-600 করা হয়েছে */}
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
           </div>
         </div>
@@ -55,8 +65,24 @@ const Products: React.FC<ProductsProps> = ({ onAddToCart }) => {
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">
-            গাড়ির টুল এবং এক্সেসরিজ এর তালিকা
+            গাড়ির টুল এবং এক্সেসরিজ এর তালিকা
           </h2>
+          {/* ক্যাটাগরি ফিল্টার বাটন */}
+          <div className="flex flex-wrap justify-center gap-2 mb-8">
+            {categories.map((category) => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`py-2 px-6 rounded-full font-semibold transition-colors duration-200 ${
+                  selectedCategory === category
+                    ? 'bg-primary-600 text-white shadow-md'
+                    : 'bg-white text-gray-700 hover:bg-gray-200 shadow'
+                }`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -87,13 +113,11 @@ const Products: React.FC<ProductsProps> = ({ onAddToCart }) => {
                 </p>
                 
                 <div className="flex justify-between items-center">
-                  {/* এখানে blue-600 পরিবর্তন করে primary-600 করা হয়েছে */}
                   <div className="text-2xl font-bold text-primary-600">
                     ৳{product.price.toLocaleString()}
                   </div>
                   <button
                     onClick={() => handleAddToCart(product)}
-                    // এখানে blue-600 এবং blue-700 পরিবর্তন করা হয়েছে
                     className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors duration-200 flex items-center gap-2 font-medium"
                   >
                     <ShoppingCart size={18} />
