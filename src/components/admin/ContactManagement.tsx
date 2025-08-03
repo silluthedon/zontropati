@@ -1,24 +1,44 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Calendar } from 'lucide-react';
-import { supabase, Contact } from '../../lib/supabase';
+import { Mail, Calendar, Search, Phone } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
+
+// Updated Contact interface to include the phone field
+interface Contact {
+  id: string;
+  name: string;
+  email: string;
+  phone: string; // Added phone field
+  message: string;
+  timestamp: string;
+}
 
 const ContactManagement: React.FC = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    fetchContacts();
-  }, []);
+    // Fetch contacts whenever the searchQuery changes
+    fetchContacts(searchQuery);
+  }, [searchQuery]);
 
-  const fetchContacts = async () => {
+  const fetchContacts = async (query: string) => {
+    setLoading(true);
     try {
-      const { data, error } = await supabase
+      let supabaseQuery = supabase
         .from('contacts')
         .select('*')
         .order('timestamp', { ascending: false });
+
+      if (query) {
+        // Use an OR condition to search across name, email, and phone fields
+        supabaseQuery = supabaseQuery.or(`name.ilike.%${query}%,email.ilike.%${query}%,phone.ilike.%${query}%`);
+      }
+
+      const { data, error } = await supabaseQuery;
 
       if (error) throw error;
       setContacts(data || []);
@@ -39,8 +59,24 @@ const ContactManagement: React.FC = () => {
   }
 
   return (
-    <div>
+    <div className="p-4">
       <h2 className="text-2xl font-bold text-gray-800 mb-6">Contact Messages</h2>
+
+      {/* Search Input - Updated for smaller size and centering */}
+      <div className="mb-6 flex justify-center">
+        <div className="relative max-w-md w-full">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-5 w-5 text-gray-400" />
+          </div>
+          <input
+            type="text"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Search by name, email, or phone..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </div>
       
       <div className="bg-white shadow rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
@@ -52,6 +88,9 @@ const ContactManagement: React.FC = () => {
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Email
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Phone
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Message Preview
@@ -74,6 +113,12 @@ const ContactManagement: React.FC = () => {
                     <div className="flex items-center">
                       <Mail size={16} className="mr-2 text-gray-400" />
                       {contact.email}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <div className="flex items-center">
+                      <Phone size={16} className="mr-2 text-gray-400" />
+                      {contact.phone}
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
@@ -118,6 +163,9 @@ const ContactManagement: React.FC = () => {
                 </div>
                 <div>
                   <strong>Email:</strong> {selectedContact.email}
+                </div>
+                <div>
+                  <strong>Phone:</strong> {selectedContact.phone}
                 </div>
                 <div>
                   <strong>Date:</strong> {new Date(selectedContact.timestamp).toLocaleString()}

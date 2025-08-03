@@ -8,7 +8,7 @@ interface Product {
   id: string;
   name: string;
   price: number;
-  category: string; // Add the category field
+  category: string;
 }
 
 interface Order {
@@ -30,6 +30,7 @@ interface OrderManagementProps {
 }
 
 const categories = ['All', 'Tools', 'Accessories', 'Engine oil', 'Spare parts'];
+const statuses = ['All', 'Pending', 'Shipped', 'Delivered']; // নতুন স্ট্যাটাস লিস্ট
 
 const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -38,9 +39,16 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
   const [user, setUser] = useState<any | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showModal, setShowModal] = useState(false);
+  
+  // existing filters
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All'); // নতুন স্টেট
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All');
   const [productFilter, setProductFilter] = useState('');
+  
+  // New filters for Id and Status
+  const [orderIdSearchTerm, setOrderIdSearchTerm] = useState(''); // Added for ID search
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState('All'); // Added for status filter
+
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 10;
@@ -63,7 +71,7 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
       setOrders([]);
       setLoading(false);
     }
-  }, [user, currentPage, searchTerm, productFilter, selectedCategoryFilter]); // dependency array-তে নতুন স্টেট যুক্ত করা হয়েছে
+  }, [user, currentPage, searchTerm, productFilter, selectedCategoryFilter, orderIdSearchTerm, selectedStatusFilter]);
 
   const fetchProducts = async () => {
     try {
@@ -102,20 +110,34 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
         `, { count: 'exact' })
         .eq('user_id', user.id);
 
+      // Filtering logic
+      const searchClauses = [];
       if (searchTerm) {
-        query = query.or(`customer_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
+        searchClauses.push(`customer_name.ilike.%${searchTerm}%`);
+        searchClauses.push(`email.ilike.%${searchTerm}%`);
+      }
+      if (orderIdSearchTerm) {
+        // Partial search for Order ID
+        searchClauses.push(`id.ilike.%${orderIdSearchTerm}%`);
       }
       
-      // প্রোডাক্ট ক্যাটাগরি ফিল্টার করা
+      if (searchClauses.length > 0) {
+        query = query.or(searchClauses.join(','));
+      }
+      
       if (selectedCategoryFilter !== 'All') {
-        // 'products' রিলেশন ব্যবহার করে ফিল্টার করা
         query = query.eq('products.category', selectedCategoryFilter);
       }
       
       if (productFilter) {
         query = query.eq('product_id', productFilter);
       }
-
+      
+      // New status filter
+      if (selectedStatusFilter !== 'All') {
+        query = query.eq('status', selectedStatusFilter);
+      }
+      
       const { data, error, count } = await query
         .order('order_date', { ascending: false })
         .range(offset, offset + itemsPerPage - 1);
@@ -200,17 +222,25 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
     setSearchTerm(e.target.value);
     setCurrentPage(1);
   };
+
+  const handleOrderIdSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setOrderIdSearchTerm(e.target.value);
+    setCurrentPage(1);
+  };
   
   const handleCategoryFilterChange = (category: string) => {
     setSelectedCategoryFilter(category);
-    // যখন ক্যাটাগরি ফিল্টার পরিবর্তন করা হবে, তখন প্রোডাক্ট ফিল্টারটি রিসেট করা
     setProductFilter(''); 
+    setCurrentPage(1);
+  };
+  
+  const handleStatusFilterChange = (status: string) => {
+    setSelectedStatusFilter(status);
     setCurrentPage(1);
   };
 
   const handleProductFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setProductFilter(e.target.value);
-    // যখন প্রোডাক্ট ফিল্টার পরিবর্তন করা হবে, তখন ক্যাটাগরি ফিল্টারটি রিসেট করা
     setSelectedCategoryFilter('All');
     setCurrentPage(1);
   };
@@ -249,6 +279,35 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
             onChange={handleSearch}
             className="w-full md:w-64 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
+          <input
+            type="text"
+            placeholder="Search by Order ID..."
+            value={orderIdSearchTerm}
+            onChange={handleOrderIdSearch}
+            className="w-full md:w-48 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+          />
+          <select
+            value={selectedStatusFilter}
+            onChange={(e) => handleStatusFilterChange(e.target.value)}
+            className="w-full md:w-48 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
+            {statuses.map(status => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+          <select
+            value={selectedCategoryFilter}
+            onChange={(e) => handleCategoryFilterChange(e.target.value)}
+            className="w-full md:w-48 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
+            {categories.map(category => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
           <select
             value={productFilter}
             onChange={handleProductFilterChange}
@@ -258,19 +317,6 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ onStatsUpdate }) => {
             {products.map(product => (
               <option key={product.id} value={product.id}>
                 {product.name}
-              </option>
-            ))}
-          </select>
-
-          {/* নতুন ক্যাটাগরি ফিল্টার */}
-          <select
-            value={selectedCategoryFilter}
-            onChange={(e) => handleCategoryFilterChange(e.target.value)}
-            className="w-full md:w-48 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-            {categories.map(category => (
-              <option key={category} value={category}>
-                {category}
               </option>
             ))}
           </select>

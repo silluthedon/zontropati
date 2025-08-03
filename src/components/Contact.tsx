@@ -9,12 +9,14 @@ import toast from 'react-hot-toast';
 const schema = yup.object().shape({
   name: yup.string().required('Name is required'),
   email: yup.string().email('Invalid email').required('Email is required'),
+  phone: yup.string().required('Phone number is required'), // Added phone validation
   message: yup.string().required('Message is required'),
 });
 
 interface ContactFormData {
   name: string;
   email: string;
+  phone: string; // Added phone field to the interface
   message: string;
 }
 
@@ -38,6 +40,7 @@ const Contact: React.FC = () => {
         .insert({
           name: data.name,
           email: data.email,
+          phone: data.phone, // Added phone to the insert data
           message: data.message,
         });
 
@@ -73,7 +76,6 @@ const Contact: React.FC = () => {
               
               <div className="space-y-6">
                 <div className="flex items-center gap-4">
-                  {/* bg-blue-100 এবং text-blue-600 পরিবর্তন করা হয়েছে */}
                   <div className="bg-primary-100 p-3 rounded-full">
                     <Mail className="w-6 h-6 text-primary-600" />
                   </div>
@@ -84,7 +86,6 @@ const Contact: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-4">
-                  {/* bg-blue-100 এবং text-blue-600 পরিবর্তন করা হয়েছে */}
                   <div className="bg-primary-100 p-3 rounded-full">
                     <Phone className="w-6 h-6 text-primary-600" />
                   </div>
@@ -95,7 +96,6 @@ const Contact: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-4">
-                  {/* bg-blue-100 এবং text-blue-600 পরিবর্তন করা হয়েছে */}
                   <div className="bg-primary-100 p-3 rounded-full">
                     <MapPin className="w-6 h-6 text-primary-600" />
                   </div>
@@ -159,6 +159,26 @@ const Contact: React.FC = () => {
                 />
                 {errors.email && (
                   <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+                )}
+              </div>
+              
+              {/* New Phone Field */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Phone *
+                </label>
+                <input
+                  type="tel"
+                  {...register('phone')}
+                  className={`w-full px-4 py-3 border border-gray-300 rounded-lg transition-colors focus:outline-none ${
+                    errors.phone
+                      ? 'border-red-500 focus:ring-2 focus:ring-red-500'
+                      : 'focus:ring-2 focus:ring-primary-500 focus:border-primary-500'
+                  }`}
+                  placeholder="+880..."
+                />
+                {errors.phone && (
+                  <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>
                 )}
               </div>
 
